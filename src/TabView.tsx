@@ -79,14 +79,27 @@ export default class TabView<T extends Route> extends React.Component<
     layout: { width: 0, height: 0, ...this.props.initialLayout },
   };
 
+  timer: any;
+
   private jumpToIndex = (index: number) => {
     if (index !== this.props.navigationState.index) {
       this.props.onIndexChange(index);
     }
   };
 
-  private handleLayout = (e: LayoutChangeEvent) => {
-    const { height, width } = e.nativeEvent.layout;
+  private debounce(f, interval) {
+    return (...args) => {
+      clearTimeout(this.timer);
+      return new Promise((resolve) => {
+        this.timer = setTimeout(() => {
+          return resolve(f(...args));
+        }, interval);
+      });
+    };
+  }
+
+  private handleLayout = (layout: any) => {
+    const { height, width } = layout;
 
     if (
       this.state.layout.width === width &&
@@ -102,6 +115,11 @@ export default class TabView<T extends Route> extends React.Component<
       },
     });
   };
+
+  private debouncedLayoutHandling = this.debounce(
+    (layout: any) => this.handleLayout(layout),
+    100
+  );
 
   render() {
     const {
@@ -131,7 +149,10 @@ export default class TabView<T extends Route> extends React.Component<
 
     return (
       <GestureHandlerWrapper
-        onLayout={this.handleLayout}
+        onLayout={(e: LayoutChangeEvent) => {
+          const { layout } = e.nativeEvent;
+          this.debouncedLayoutHandling(layout);
+        }}
         style={[styles.pager, style]}
       >
         {renderPager({
